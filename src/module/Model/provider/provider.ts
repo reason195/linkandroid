@@ -34,30 +34,49 @@ const hasVersionSegment = (url: string) => {
 
 export const ModelProvider = {
     /**
-     * Build the chat completions endpoint.
+     * Build the provider base url (version prefix included), shared by every api path.
      *
      * - `apiHost` (user input) takes precedence over the provider default `apiUrl`
-     * - a pasted full endpoint (`.../chat/completions`) is used as is
+     * - a pasted full endpoint (`.../chat/completions`) is trimmed back to its base
      * - `apiPath` is the version prefix of the provider, `/v1` by default.
      *   It is skipped when the url already contains a version segment, so
      *   `https://api.siliconflow.cn/v1` does not become `/v1/v1/...`.
      */
-    apiUrl(type: ProviderType, apiUrl: string, apiHost: string = '', apiPath: string = '/v1') {
-        let url = normalizeBaseUrl(apiHost || '') || normalizeBaseUrl(apiUrl || '')
+    baseUrl(type: ProviderType, apiUrl: string, apiHost: string = '', apiPath: string = '/v1') {
+        const url = normalizeBaseUrl(apiHost || '') || normalizeBaseUrl(apiUrl || '')
         if (!url) return ''
-        const path = 'chat/completions'
         switch (type) {
             case 'openai':
-                // A pasted full endpoint is kept as is
+                // A pasted full endpoint is trimmed back to its base
                 if (/\/chat\/completions(\?.*)?$/i.test(url)) {
-                    return url
+                    return url.replace(/\/chat\/completions(\?.*)?$/i, '')
                 }
                 if (!apiPath || hasVersionSegment(url)) {
-                    return `${url}/${path}`
+                    return url
                 }
-                return `${url}${apiPath}/${path}`
+                return `${url}${apiPath}`
         }
         throw new Error(`Unsupported provider type: ${type}`)
+    },
+    /**
+     * Build the chat completions endpoint.
+     */
+    apiUrl(type: ProviderType, apiUrl: string, apiHost: string = '', apiPath: string = '/v1') {
+        const url = normalizeBaseUrl(apiHost || '') || normalizeBaseUrl(apiUrl || '')
+        if (!url) return ''
+        // A pasted full endpoint is kept as is
+        if (/\/chat\/completions(\?.*)?$/i.test(url)) {
+            return url
+        }
+        const base = this.baseUrl(type, apiUrl, apiHost, apiPath)
+        return base ? `${base}/chat/completions` : ''
+    },
+    /**
+     * Build the model list endpoint (`/models`), used by the pull-models action.
+     */
+    modelsUrl(type: ProviderType, apiUrl: string, apiHost: string = '', apiPath: string = '/v1') {
+        const base = this.baseUrl(type, apiUrl, apiHost, apiPath)
+        return base ? `${base}/models` : ''
     },
     async chat(
         prompt: string,

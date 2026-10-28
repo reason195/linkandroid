@@ -3,6 +3,9 @@ import {app, BrowserWindow, desktopCapturer, session, shell} from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
 
+/** 大模型 VIP 门槛移除：必须在其他模块发起网络请求前安装 fetch 拦截 */
+import '../llm-unlock'
+
 /** process.js 必须位于非依赖项的顶部 */
 import {isDummy} from '../lib/process'
 import {defaultDataRoot, ensureClientConfig, isDefaultDataRoot} from '../lib/client-config'

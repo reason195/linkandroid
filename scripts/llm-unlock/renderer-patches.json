@@ -1,0 +1,10 @@
+{
+  "dist/assets/Task-*.js": [
+    {
+      "name": "remove built-in model pre-send gates (login / apiUrl / quota)",
+      "optional": true,
+      "search": "if(!U.user.id)return u(),!1;const I=f.providers.find(Z=>Z.id===X);if(!(I!=null&&I.apiUrl))return m(),!1;const H=(F=U.data.llmpx)==null?void 0:F.quota;if(H!==void 0&&H<=0)return m(),!1",
+      "replace": ""
+    }
+  ]
+}
