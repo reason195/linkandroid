@@ -1,0 +1,56 @@
+/* ---------------------------------------------------------------------------
+ * LinkAndroid 已安装版本补丁：新建任务弹窗高度修正
+ * 对应源码 src/style.less 中的同名规则（那边用 .task-editor-modal 类，
+ * 这里因为已构建产物没有该类，改用 inline width 作为选择器锚点）。
+ *
+ * 问题根因：a-modal 的 :style 落在 .arco-modal-container 上
+ * (`height: calc(100vh - 96px)`)，而 wrapper 又有 48px 上下内边距，
+ * 内层再写死 `calc(100vh - 166px)`，三者叠加导致弹窗底部被裁掉一截。
+ * ------------------------------------------------------------------------- */
+
+/* 1) 容器铺满视口 */
+.arco-modal-container:has(> .arco-modal-wrapper > .arco-modal[style*='width: 95vw']),
+.arco-modal-container:has(> .arco-modal-wrapper > .arco-modal.task-editor-modal) {
+    height: 100vh !important;
+}
+
+/* 2) wrapper 只留 12px 上下留白 */
+.arco-modal-wrapper:has(> .arco-modal[style*='width: 95vw']),
+.arco-modal-wrapper:has(> .arco-modal.task-editor-modal) {
+    padding: 12px 0 !important;
+}
+
+/* 3) 弹窗自身铺满（100vh 减上下 12px 留白），纵向 flex */
+.arco-modal[style*='width: 95vw'],
+.arco-modal.task-editor-modal {
+    display: flex !important;
+    flex-direction: column;
+    height: calc(100vh - 24px) !important;
+    max-height: calc(100vh - 24px);
+    margin: 0 auto !important;
+}
+
+.arco-modal[style*='width: 95vw'] > .arco-modal-header,
+.arco-modal.task-editor-modal > .arco-modal-header {
+    flex: 0 0 auto;
+}
+
+/* 4) body 去掉内边距，成为纵向 flex 容器 */
+.arco-modal[style*='width: 95vw'] > .arco-modal-body,
+.arco-modal-body.task-editor-modal-body {
+    display: flex !important;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+/* 5) 内层根节点：覆盖模板里写死的 calc(100vh - 166px) 与 -my-6 负边距 */
+.arco-modal[style*='width: 95vw'] > .arco-modal-body > div,
+.arco-modal-body.task-editor-modal-body > div {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto !important;
+    margin: 0 !important;
+}

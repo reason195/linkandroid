@@ -466,17 +466,18 @@ defineExpose({
         <a-modal
             v-model:visible="visible"
             width="95vw"
+            modal-class="task-editor-modal"
+            body-class="task-editor-modal-body"
             :footer="false"
             title-align="start"
             :esc-to-close="false"
-            :style="{height: 'calc(100vh - 96px)'}"
         >
             <template #title>
                 <div class="font-bold">
                     {{ isEditMode ? $t('task.edit') : $t('task.add') }}
                 </div>
             </template>
-            <div class="-mx-5 -my-6 flex flex-col" style="height: calc(100vh - 166px)">
+            <div class="flex flex-col h-full min-h-0">
                 <!-- Top toolbar -->
                 <div
                     class="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
