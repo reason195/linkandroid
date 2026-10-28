@@ -1,0 +1,16 @@
+{
+  "_readme": "LinkAndroid 大模型 VIP 限制移除配置。apiUrl/apiKey 填任意 OpenAI 兼容端点即可让「内置模型」工作；留空则保持服务端下发的值（非会员为空）。models 可选，用于覆盖内置模型列表，名字需与端点一致。启用方式见同目录 README.md。",
+  "enabled": true,
+  "quota": 1000000000,
+  "virtualUserId": 1,
+  "apiUrl": "",
+  "apiKey": "",
+  "models": [],
+  "_examples": {
+    "deepseek": {"apiUrl": "https://api.deepseek.com/v1", "apiKey": "sk-xxxxxxxx"},
+    "siliconflow": {"apiUrl": "https://api.siliconflow.cn/v1", "apiKey": "sk-xxxxxxxx"},
+    "openrouter": {"apiUrl": "https://openrouter.ai/api/v1", "apiKey": "sk-or-xxxxxxxx"},
+    "ollama_local": {"apiUrl": "http://127.0.0.1:11434/v1", "apiKey": "ollama"},
+    "oneapi_newapi": {"apiUrl": "https://your-relay.example.com/v1", "apiKey": "sk-xxxxxxxx"}
+  }
+}

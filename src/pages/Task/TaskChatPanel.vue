@@ -3,7 +3,6 @@ import {nextTick, onMounted, ref} from 'vue'
 import {t} from '../../lang'
 import {Dialog} from '../../lib/dialog'
 import {useModelStore} from '../../module/Model/store/model'
-import {useUserStore} from '../../store/modules/user'
 import ModelSelector from '../../module/Model/ModelSelector.vue'
 import LoginRequiredDialog from '../../components/common/LoginRequiredDialog.vue'
 import LLMRechargeDialog from '../../components/common/LLMRechargeDialog.vue'
@@ -134,23 +133,9 @@ const preCheckSend = (providerId: string, modelId: string): boolean => {
         Dialog.tipError(t('hint.selectModel'))
         return false
     }
-    const userStore = useUserStore()
-    if (providerId === 'buildIn') {
-        if (!userStore.user.id) {
-            showLoginDialog()
-            return false
-        }
-        const provider = modelStore.providers.find((p) => p.id === providerId)
-        if (!provider?.apiUrl) {
-            showRechargeDialog()
-            return false
-        }
-        const quota = userStore.data.llmpx?.quota
-        if (quota !== undefined && quota <= 0) {
-            showRechargeDialog()
-            return false
-        }
-    }
+    // llm-unlock: 内置模型（buildIn / llmpx）的登录、端点、额度前置校验已移除。
+    // 会员标记、额度与模型端点由 electron/llm-unlock.ts 在主进程注入，
+    // 详见 scripts/llm-unlock/README.md
     if (!props.selectedDeviceId) {
         Dialog.tipError(t('hint.selectDeviceFirst'))
         return false

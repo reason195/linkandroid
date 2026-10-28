@@ -502,6 +502,80 @@ export const modelStore = defineStore('model', {
             }
             await this.sync()
         },
+        /**
+         * 从供应商的 OpenAI 兼容 /models 接口拉取模型列表，合并进当前配置。
+         * 已存在的模型只做启用，不覆盖名称/分组/能力，避免冲掉手工调整。
+         */
+        async pullModels(providerId: string): Promise<{added: number; updated: number; total: number}> {
+            const provider = this.providers.find((p) => p.id === providerId)
+            if (!provider) {
+                throw new Error(`Provider not found: ${providerId}`)
+            }
+            if (provider.id === 'buildIn') {
+                throw t('model.pullModelsBuiltin')
+            }
+            const url = ModelProvider.modelsUrl(provider.type, provider.apiUrl, provider.data.apiHost, provider.apiPath)
+            if (!url) {
+                throw t('model.pullModelsNoUrl')
+            }
+            const res = await fetch(url, {
+                headers: provider.data.apiKey ? {Authorization: `Bearer ${provider.data.apiKey}`} : {},
+            })
+            const text = await res.text()
+            if (!res.ok) {
+                throw `HTTP ${res.status} ${text.substring(0, 200)}`
+            }
+            let json: any = null
+            try {
+                json = JSON.parse(text)
+            } catch (e) {
+                throw `Invalid response: ${text.substring(0, 200)}`
+            }
+            const list: any[] = Array.isArray(json) ? json : json.data || json.models || []
+            const ids: string[] = list
+                .map((m) => (typeof m === 'string' ? m : m.id || m.name || m.model))
+                .filter((id) => !!id)
+            // 混入的向量化/重排/语音/绘图模型在对话里必然失败，直接跳过
+            const chatIds = ids.filter(
+                (id) =>
+                    !/embed|rerank|bge-|m3e|tts|whisper|audio|speech|moderation|dall-?e|stable-diffusion|flux|sora|video|image|ocr|guard/i.test(
+                        id,
+                    ),
+            )
+            if (!chatIds.length) {
+                return {added: 0, updated: 0, total: ids.length}
+            }
+            const existingGroups = provider.data.models
+                .map((m) => m.group)
+                .filter((v, i, a) => !!v && a.indexOf(v) === i)
+            const group = existingGroups[0] || provider.title || 'Default'
+            let added = 0
+            let updated = 0
+            for (const id of chatIds) {
+                const existing = provider.data.models.find((m) => m.id === id)
+                if (existing) {
+                    existing.enabled = true
+                    updated++
+                    continue
+                }
+                provider.data.models.push({
+                    id,
+                    provider: provider.id,
+                    name: id,
+                    group,
+                    types: ['text'],
+                    caps: {
+                        vision: false,
+                        tools: true,
+                    },
+                    enabled: true,
+                    editable: true,
+                } as Model)
+                added++
+            }
+            await this.sync()
+            return {added, updated, total: ids.length}
+        },
         sync: debounce(async () => {
             const providerData: any = {}
             model.providers.forEach((provider) => {

@@ -104,6 +104,8 @@ document.addEventListener('click', (event) => {
 
 export const useUser = () => {
     const store = useUserStore()
-    const isVip = computed(() => !store.data?.vip?.isDefault)
+    // llm-unlock: VIP 判断已在客户端解除（服务端下发的会员标记由
+    // electron/llm-unlock.ts 改写），详见 scripts/llm-unlock/README.md
+    const isVip = computed(() => true)
     return {isVip, store}
 }

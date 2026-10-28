@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue'
+import {t} from '../../lang'
+import {Dialog} from '../../lib/dialog'
+import {mapError} from '../../lib/error'
 import {useSettingStore} from '../../store/modules/setting'
 import {useUserStore} from '../../store/modules/user'
 import ModelAddDialog from './components/ModelAddDialog.vue'
@@ -48,6 +51,27 @@ const doRefreshQuota = async () => {
 
 const keywords = ref('')
 const currentProviderId = ref('')
+
+const pullModelsLoading = ref(false)
+const doPullModels = async () => {
+    if (!provider.value || pullModelsLoading.value) {
+        return
+    }
+    const providerId = provider.value.id
+    pullModelsLoading.value = true
+    try {
+        const result = await modelStore.pullModels(providerId)
+        if (!result.added && !result.updated) {
+            Dialog.tipError(t('model.pullModelsEmpty'))
+        } else {
+            Dialog.tipSuccess(t('model.pullModelsDone', {added: result.added, updated: result.updated}))
+        }
+    } catch (e) {
+        Dialog.tipError(t('model.pullModelsFailed', {error: mapError(e)}))
+    } finally {
+        pullModelsLoading.value = false
+    }
+}
 
 const doSelectProvider = (id: string) => {
     currentProviderId.value = id
@@ -239,7 +263,21 @@ watch(
                     </div>
                 </div>
                 <div class="mb-3">
-                    <div class="mb-2 font-bold">{{ $t('model.model') }}</div>
+                    <div class="mb-2 flex items-center">
+                        <div class="font-bold">{{ $t('model.model') }}</div>
+                        <div class="flex-grow"></div>
+                        <a-button
+                            v-if="provider.id !== 'buildIn'"
+                            class="mb-1"
+                            :loading="pullModelsLoading"
+                            @click="doPullModels"
+                        >
+                            <template #icon>
+                                <icon-refresh />
+                            </template>
+                            {{ $t('model.pullModels') }}
+                        </a-button>
+                    </div>
                     <div class="mb-2 text-sm text-gray-400" v-if="provider.id !== 'buildIn'">
                         {{ $t('common.view') }}
                         <a :href="provider?.websites.docs" target="_blank" class="text-blue-600">

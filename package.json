@@ -41,6 +41,8 @@
         "screenshot": "tsx test/screenshot.ts",
         "auto-serve": "tsx test/auto-serve/index.ts",
         "preview": "vite preview",
+        "ui-patch": "node scripts/ui-patch/apply.cjs",
+        "llm-unlock": "node scripts/llm-unlock/apply.cjs",
         "format": "prettier --write --log-level warn \"src/**/*.{ts,tsx,vue,js}\" \"electron/**/*.{ts,tsx,js}\"",
         "test:updater": "node test/e2e/updater.mjs",
         "test:updater:ui": "node test/e2e/updater-ui.mjs",
