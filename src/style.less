@@ -281,6 +281,44 @@ body:not([data-theme="dark"]) {
     }
 }
 
+// 「新建任务」大弹窗：高度跟随视口，内容区自行滚动。
+// 旧写法把 `100vh - 96px` 经由 :style 设到 .arco-modal-container 上，
+// wrapper 又有 48px 上下内边距，内层再写死 `100vh - 166px`，
+// 三者叠加导致弹窗底部被裁掉一截。
+.arco-modal-container:has(> .arco-modal-wrapper > .arco-modal.task-editor-modal) {
+    height: 100vh !important;
+}
+
+.arco-modal-wrapper:has(> .arco-modal.task-editor-modal) {
+    padding: 12px 0 !important;
+}
+
+.arco-modal.task-editor-modal {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 24px) !important;
+    max-height: calc(100vh - 24px);
+    margin: 0 auto;
+}
+
+.arco-modal.task-editor-modal > .arco-modal-header {
+    flex: 0 0 auto;
+}
+
+.arco-modal-body.task-editor-modal-body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.arco-modal-body.task-editor-modal-body > div {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
 .arco-select {
     border-radius: 0.5rem;
 }

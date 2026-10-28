@@ -39,6 +39,7 @@
         "auto-serve": "tsx test/auto-serve/index.ts",
         "preview": "vite preview",
         "llm-unlock": "node scripts/llm-unlock/apply.cjs",
+        "ui-patch": "node scripts/ui-patch/apply.cjs",
         "postinstall": "electron-builder install-app-deps",
         "postuninstall": "electron-builder install-app-deps",
         "re-sqlite": "npx electron-rebuild -f -w better-sqlite3",
