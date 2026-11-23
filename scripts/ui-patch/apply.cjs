@@ -87,6 +87,8 @@ const htmlEntry = entries.find((e) => e.path === 'dist/index.html')
 if (!htmlEntry) fail('asar 内找不到 dist/index.html')
 
 const readEntry = (entry) => {
+    // unpacked 条目（原生模块等）的数据不在 asar 里，位于 app.asar.unpacked/
+    if (entry.node.unpacked) fail('unpacked entry has no inline data: ' + entry.path)
     const buf = Buffer.alloc(entry.node.size)
     let read = 0
     while (read < entry.node.size) {
@@ -145,7 +147,7 @@ const outFd = fs.openSync(outPath, 'w')
 let offset = 0
 const chunks = []
 for (const entry of entries) {
-    if (entry.link) continue
+    if (entry.link || entry.node.unpacked) continue
     let buf
     if (entry.path === 'dist/index.html') {
         buf = Buffer.from(html, 'utf8')

@@ -124,6 +124,8 @@ const entries = walk(header, '', [])
 const byPath = new Map(entries.map((e) => [e.path, e]))
 
 function readEntry(entry) {
+    // unpacked 条目（原生模块等）的数据不在 asar 里，位于 app.asar.unpacked/
+    if (entry.node.unpacked) fail('unpacked entry has no inline data: ' + entry.path)
     const buf = Buffer.alloc(entry.node.size)
     let read = 0
     while (read < entry.node.size) {
@@ -222,7 +224,7 @@ const outFd = fs.openSync(outPath, 'w')
 let offset = 0
 const chunks = []
 for (const entry of entries) {
-    if (entry.link) continue
+    if (entry.link || entry.node.unpacked) continue
     const buf = contents.has(entry.path) ? contents.get(entry.path) : readEntry(entry)
     entry.node.offset = String(offset)
     entry.node.size = buf.length

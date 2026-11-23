@@ -5,6 +5,12 @@
       "optional": true,
       "search": "if(!U.user.id)return u(),!1;const I=f.providers.find(Z=>Z.id===X);if(!(I!=null&&I.apiUrl))return m(),!1;const H=(F=U.data.llmpx)==null?void 0:F.quota;if(H!==void 0&&H<=0)return m(),!1",
       "replace": ""
+    },
+    {
+      "name": "remove built-in model pre-send gates (2.6 minified names)",
+      "optional": true,
+      "search": "if(!Y.user.id)return h(),!1;const V=f.providers.find(Z=>Z.id===R);if(!(V!=null&&V.apiUrl))return m(),!1;const H=(F=Y.data.llmpx)==null?void 0:F.quota;if(H!==void 0&&H<=0)return m(),!1",
+      "replace": ""
     }
   ]
 }
