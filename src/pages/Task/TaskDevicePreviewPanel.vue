@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import {computed, nextTick, ref} from 'vue'
+import {computed, nextTick, onMounted, onUnmounted, ref} from 'vue'
 import {t} from '../../lang'
 import {Dialog} from '../../lib/dialog'
 import {mapError} from '../../lib/error'
+import {dragColumn} from '../../lib/resize'
+import {StorageUtil} from '../../lib/storage'
 import {collectDeviceScreenshotByLa, collectDeviceXmlByLa} from './TaskRuntime'
 import TaskXmlNodeTree, {TaskXmlNode} from './TaskXmlNodeTree.vue'
 
@@ -28,7 +30,59 @@ const nodes = ref<TaskXmlNode[]>([])
 const selectedNode = ref<TaskXmlNode | null>(null)
 const hoveredNode = ref<TaskXmlNode | null>(null)
 const searchText = ref('')
+const clickableOnly = ref(false)
 const xmlTreeComponentRef = ref<any>(null)
+
+// 预览图 / 结构树之间的分栏尺寸
+const splitRoot = ref<HTMLElement | null>(null)
+const previewWidth = ref<number>(Number(StorageUtil.get('TaskPreview.previewWidth', 0)) || 0)
+const resizing = ref(false)
+
+const onSplitDown = (e: PointerEvent) => {
+    if (!splitRoot.value) return
+    const total = splitRoot.value.clientWidth
+    const start = previewWidth.value || Math.round(total / 2)
+    resizing.value = true
+    dragColumn(e, {
+        start,
+        min: 220,
+        max: () => total - 240,
+        apply: (w) => {
+            previewWidth.value = w
+        },
+        onEnd: (w) => {
+            resizing.value = false
+            StorageUtil.set('TaskPreview.previewWidth', Math.round(w))
+        },
+    })
+}
+
+const resetSplit = () => {
+    previewWidth.value = 0
+    StorageUtil.remove('TaskPreview.previewWidth')
+}
+
+/** 主窗口变小时收回预览列宽度，保证结构树仍可用 */
+const fitPreviewWidth = () => {
+    if (!previewWidth.value || !splitRoot.value) return
+    const max = Math.max(220, splitRoot.value.clientWidth - 240)
+    if (previewWidth.value > max) previewWidth.value = max
+}
+
+onMounted(() => window.addEventListener('resize', fitPreviewWidth))
+onUnmounted(() => window.removeEventListener('resize', fitPreviewWidth))
+
+const treeTotalCount = computed<number>(() => xmlTreeComponentRef.value?.totalCount || 0)
+const treeVisibleCount = computed<number>(() => xmlTreeComponentRef.value?.visibleCount || 0)
+const treeClickableCount = computed<number>(() => xmlTreeComponentRef.value?.clickableCount || 0)
+
+const doExpandAll = () => {
+    xmlTreeComponentRef.value?.expandAll()
+}
+
+const doCollapseAll = () => {
+    xmlTreeComponentRef.value?.resetDepth()
+}
 
 const zoomLevel = ref(1)
 const zoomMin = 0.25
@@ -154,6 +208,12 @@ const buildNode = (el: Element, path: string): TaskXmlNode => {
         className: el.getAttribute('class') || '',
         bounds: el.getAttribute('bounds') || '',
         clickable: el.getAttribute('clickable') || '',
+        scrollable: el.getAttribute('scrollable') || '',
+        longClickable: el.getAttribute('long-clickable') || '',
+        checkable: el.getAttribute('checkable') || '',
+        checked: el.getAttribute('checked') || '',
+        enabled: el.getAttribute('enabled') || '',
+        selected: el.getAttribute('selected') || '',
         children,
     }
 }
@@ -273,9 +333,12 @@ defineExpose({
 
 <template>
     <div class="flex flex-col h-full bg-gray-50 dark:bg-gray-900 relative">
-        <div class="flex-1 min-h-0 flex overflow-hidden">
+        <div ref="splitRoot" class="flex-1 min-h-0 flex overflow-hidden">
             <!-- Left: Screenshot -->
-            <div class="w-1/2 min-w-0 overflow-auto p-2 border-r border-gray-200 dark:border-gray-700">
+            <div
+                class="min-w-0 overflow-auto p-2 border-r border-gray-200 dark:border-gray-700"
+                :style="previewWidth ? {width: previewWidth + 'px', flex: '0 0 auto'} : {flex: '1 1 0%'}"
+            >
                 <div
                     v-if="!screenshot"
                     class="h-full min-h-[360px] flex flex-col items-center justify-center text-center text-gray-400"
@@ -356,8 +419,17 @@ defineExpose({
                 </div>
             </div>
 
+            <!-- 预览图 / 结构树 分隔条 -->
+            <div
+                class="w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-blue-400/50 transition-colors"
+                :class="resizing ? 'bg-blue-400/60' : ''"
+                :title="$t('device.preview.resizePaneHint')"
+                @pointerdown.prevent="onSplitDown"
+                @dblclick="resetSplit"
+            />
+
             <!-- Right: XML tree -->
-            <div class="w-1/2 min-w-0 flex flex-col">
+            <div class="flex-1 min-w-0 flex flex-col">
                 <div
                     v-if="nodes.length === 0"
                     class="flex-1 flex items-center justify-center text-center text-gray-400"
@@ -395,18 +467,34 @@ defineExpose({
                             class="flex-1"
                         />
                     </div>
+                    <!-- Tree toolbar -->
+                    <div
+                        class="flex items-center gap-1 px-2 pb-1 text-xs text-gray-500 dark:text-gray-400 shrink-0"
+                    >
+                        <a-button size="mini" @click="doExpandAll">{{ $t('device.preview.expandAll') }}</a-button>
+                        <a-button size="mini" @click="doCollapseAll">{{ $t('device.preview.collapseAll') }}</a-button>
+                        <a-checkbox v-model="clickableOnly" class="ml-1 text-xs" :disabled="treeClickableCount === 0">
+                            {{ $t('device.preview.clickableOnly') }}
+                        </a-checkbox>
+                        <div class="flex-1 min-w-0" />
+                        <span class="shrink-0 tabular-nums" :title="$t('device.preview.nodeCountHint')">
+                            {{ treeVisibleCount }}/{{ treeTotalCount }} · {{ treeClickableCount }}
+                            {{ $t('device.preview.clickableShort') }}
+                        </span>
+                    </div>
                     <!-- Tree -->
                     <div class="flex-1 min-h-0 overflow-auto px-1 pb-1">
                         <div
-                            class="min-w-full inline-block bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded"
+                            class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded overflow-hidden"
                         >
-                            <div class="py-0.5 min-w-max">
+                            <div class="py-0.5">
                                 <TaskXmlNodeTree
                                     ref="xmlTreeComponentRef"
                                     :nodes="nodes"
                                     :selected-id="selectedNode?.id || ''"
                                     :hovered-id="hoveredNode?.id || ''"
                                     :search-text="searchText"
+                                    :clickable-only="clickableOnly"
                                     @select="doSelectNode"
                                     @hover="
                                         (node: TaskXmlNode) => {

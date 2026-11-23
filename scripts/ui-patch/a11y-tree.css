@@ -1,0 +1,209 @@
+/* ---------------------------------------------------------------------------
+ * LinkAndroid 已安装版本补丁：无障碍树（XML 结构树）可读性优化
+ * 对应源码 src/pages/Task/TaskXmlNodeTree.vue 的新样式与新交互。
+ * 只改样式与 DOM 包裹，不改动任何数据。
+ * ------------------------------------------------------------------------- */
+
+/* 行密度：单行 26px，字号 12.5px，保证可读 */
+.arco-tree {
+    width: 100%;
+}
+
+.arco-tree-node {
+    min-height: 26px;
+    line-height: 26px;
+}
+
+.arco-tree-node-title {
+    display: flex !important;
+    align-items: center;
+    min-width: 0;
+    width: 100%;
+    border-radius: 3px;
+    padding-right: 4px;
+}
+
+.arco-tree-node-title-text {
+    display: flex;
+    min-width: 0;
+    width: 100%;
+    overflow: hidden;
+}
+
+.arco-tree-node-title-text > .block {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    width: 100%;
+}
+
+/* 层级引导线：缩进块画出竖线，层级一眼可辨。
+   应用自己的 scoped 样式把宽度锁在 10px，这里用更高优先级覆盖成 14px */
+.arco-tree .arco-tree-node .arco-tree-node-indent-block {
+    width: 14px !important;
+    min-width: 14px !important;
+    padding: 0 !important;
+    border-left: 1px solid rgba(100, 116, 139, 0.45);
+}
+
+[data-theme='dark'] .arco-tree .arco-tree-node .arco-tree-node-indent-block {
+    border-left-color: rgba(148, 163, 184, 0.35);
+}
+
+.arco-tree-node-switcher {
+    width: 16px !important;
+    margin-right: 3px !important;
+}
+
+/* 类名：等宽、按语义分色由脚本添加的类控制 */
+.arco-tree-node-title .font-medium.text-xs {
+    flex-shrink: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #64748b;
+}
+
+[data-theme='dark'] .arco-tree-node-title .font-medium.text-xs {
+    color: #94a3b8;
+}
+
+/* 可点击节点的小手图标 */
+.arco-tree-node-title .font-medium.text-xs svg {
+    width: 13px;
+    height: 13px;
+    color: #f97316;
+    vertical-align: -2px;
+}
+
+/* 脚本拆分后的文本 / id chip */
+.la-txt {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12.5px;
+    color: #1f2937;
+}
+
+[data-theme='dark'] .la-txt {
+    color: #e5e7eb;
+}
+
+.la-id {
+    flex-shrink: 0;
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    color: #9ca3af;
+}
+
+.la-badge {
+    flex-shrink: 0;
+    font-size: 10px;
+    line-height: 15px;
+    padding: 0 4px;
+    border-radius: 3px;
+    background: rgba(14, 165, 233, 0.12);
+    color: #0284c7;
+}
+
+/* 悬停 / 选中 */
+.arco-tree-node-title:hover {
+    background: rgba(20, 184, 166, 0.08);
+}
+
+.arco-tree-node.arco-tree-node-selected > .arco-tree-node-title {
+    background: rgba(59, 130, 246, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.35);
+}
+
+/* 「只看可点击」 */
+.la-clickable-only .arco-tree-node:not(.la-keep) {
+    display: none;
+}
+
+/* 注入的工具栏 */
+.la-tree-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px 6px;
+    font-size: 12px;
+    color: #6b7280;
+    flex-shrink: 0;
+}
+
+[data-theme='dark'] .la-tree-toolbar {
+    color: #9ca3af;
+}
+
+.la-tree-toolbar button {
+    height: 24px;
+    padding: 0 9px;
+    font-size: 12px;
+    line-height: 22px;
+    border: 1px solid var(--color-border-2, #e5e6eb);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--color-text-1, #1d2129);
+    cursor: pointer;
+}
+
+.la-tree-toolbar button:hover {
+    border-color: #1677ff;
+    color: #1677ff;
+}
+
+.la-tree-toolbar button[data-active='1'] {
+    border-color: #1677ff;
+    color: #1677ff;
+    background: rgba(22, 119, 255, 0.08);
+}
+
+.la-tree-toolbar .la-count {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- 自管折叠 ---------------- */
+/* Arco 自带的加减号换成统一的小三角 */
+.arco-tree-node-switcher {
+    position: relative;
+}
+
+.arco-tree-node-switcher-icon {
+    display: none !important;
+}
+
+.la-caret {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.la-caret::before {
+    content: '';
+    width: 0;
+    height: 0;
+    border-left: 4.5px solid #94a3b8;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    transform: rotate(90deg);
+    transition: transform 0.12s ease;
+}
+
+.arco-tree-node.la-collapsed > .arco-tree-node-title .la-caret::before {
+    transform: rotate(0deg);
+}
+
+/* 扁平渲染：折叠时隐藏后续更深层的兄弟节点 */
+.arco-tree-node.la-hidden {
+    display: none !important;
+}

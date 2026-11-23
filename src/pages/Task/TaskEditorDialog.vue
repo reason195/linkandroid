@@ -6,6 +6,8 @@ import {mapError} from '../../lib/error'
 import {testActionSet, testActionUnset} from '../../utils/test'
 import {useDeviceStore} from '../../store/modules/device'
 import {EnumDeviceStatus} from '../../types/Device'
+import {dragColumn, dragRow} from '../../lib/resize'
+import {StorageUtil} from '../../lib/storage'
 import CodeEditor from '../../components/common/CodeEditor.vue'
 import LogPanel from '../../components/common/LogPanel.vue'
 
@@ -17,6 +19,60 @@ import {runTaskPythonCode} from './TaskRuntime'
 const emit = defineEmits<{
     update: []
 }>()
+
+// ---------------------------------------------------------------------------
+// 分栏拖拽：左（代码+日志） / 右（预览+结构树），以及日志高度
+// ---------------------------------------------------------------------------
+const splitRoot = ref<HTMLElement | null>(null)
+const leftWidth = ref<number>(Number(StorageUtil.get('TaskEditor.leftWidth', 0)) || 0)
+const logHeight = ref<number>(Number(StorageUtil.get('TaskEditor.logHeight', 0)) || 180)
+const resizing = ref(false)
+
+const onSplitDown = (e: PointerEvent) => {
+    if (!splitRoot.value) return
+    const total = splitRoot.value.clientWidth
+    const start = leftWidth.value || Math.round(total / 2)
+    resizing.value = true
+    dragColumn(e, {
+        start,
+        min: 280,
+        max: () => total - 360,
+        apply: (w) => {
+            leftWidth.value = w
+        },
+        onEnd: (w) => {
+            resizing.value = false
+            StorageUtil.set('TaskEditor.leftWidth', Math.round(w))
+        },
+    })
+}
+
+const onLogResizeDown = (e: PointerEvent) => {
+    const host = (e.currentTarget as HTMLElement).parentElement
+    const max = host ? Math.max(120, host.clientHeight - 160) : 480
+    dragRow(e, {
+        start: logHeight.value,
+        min: 90,
+        max: () => max,
+        inverted: true,
+        apply: (h) => {
+            logHeight.value = h
+        },
+        onEnd: (h) => StorageUtil.set('TaskEditor.logHeight', Math.round(h)),
+    })
+}
+
+const resetSplit = () => {
+    leftWidth.value = 0
+    StorageUtil.remove('TaskEditor.leftWidth')
+}
+
+/** 主窗口变小时把左栏收回到可用范围，避免右侧面板被挤没 */
+const fitLeftWidth = () => {
+    if (!leftWidth.value || !splitRoot.value) return
+    const max = Math.max(280, splitRoot.value.clientWidth - 360)
+    if (leftWidth.value > max) leftWidth.value = max
+}
 
 const visible = ref(false)
 const formData = ref<{id: number; name: string; description: string; code: string; language: string}>({
@@ -428,7 +484,7 @@ onMounted(() => {
     testActionSet('task.editor.getRunConfig', () => testGetRunConfig())
     testActionSet('task.editor.close', () => close())
     testActionSet('task.editor.showDeviceSelect', () => doShowDeviceSelect())
-    
+    window.addEventListener('resize', fitLeftWidth)
 })
 
 onUnmounted(() => {
@@ -443,7 +499,7 @@ onUnmounted(() => {
     testActionUnset('task.editor.getRunConfig')
     testActionUnset('task.editor.close')
     testActionUnset('task.editor.showDeviceSelect')
-    
+    window.removeEventListener('resize', fitLeftWidth)
 })
 
 defineExpose({
@@ -536,8 +592,11 @@ defineExpose({
                 </div>
 
                 <!-- Main content: editor + tools -->
-                <div class="flex flex-1 overflow-hidden">
-                    <div class="w-1/2 flex flex-col overflow-hidden border-r border-gray-200 dark:border-gray-700">
+                <div ref="splitRoot" class="flex flex-1 overflow-hidden">
+                    <div
+                        class="flex flex-col overflow-hidden border-r border-gray-200 dark:border-gray-700"
+                        :style="leftWidth ? {width: leftWidth + 'px', flex: '0 0 auto'} : {flex: '1 1 0%'}"
+                    >
                         <div class="flex-1 min-h-0 overflow-hidden p-2 flex flex-col">
                             <CodeEditor
                                 v-model="formData.code"
@@ -548,8 +607,14 @@ defineExpose({
                         </div>
                         <div
                             v-if="showLog"
+                            class="shrink-0 h-1.5 cursor-row-resize bg-transparent hover:bg-blue-400/50 transition-colors"
+                            :title="$t('task.resizeLogHint')"
+                            @pointerdown.prevent="onLogResizeDown"
+                        />
+                        <div
+                            v-if="showLog"
                             class="shrink-0 border-t border-gray-200 dark:border-gray-700 flex flex-col"
-                            style="height: 180px"
+                            :style="{height: logHeight + 'px'}"
                         >
                             <LogPanel
                                 ref="logPanel"
@@ -576,7 +641,14 @@ defineExpose({
                             </LogPanel>
                         </div>
                     </div>
-                    <div class="w-1/2 flex flex-col overflow-hidden">
+                    <div
+                        class="w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-blue-400/50 transition-colors"
+                        :class="resizing ? 'bg-blue-400/60' : ''"
+                        :title="$t('task.resizePaneHint')"
+                        @pointerdown.prevent="onSplitDown"
+                        @dblclick="resetSplit"
+                    />
+                    <div class="flex-1 min-w-0 flex flex-col overflow-hidden">
                         <div
                             class="shrink-0 flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
                         >

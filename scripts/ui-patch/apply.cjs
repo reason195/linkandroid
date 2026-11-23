@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 /**
- * LinkAndroid 已安装程序 UI 补丁：把 task-editor-dialog.css 注入
- * dist/index.html（<style id="la-ui-patch">），用于修正「新建任务」弹窗
- * 在最大化后仍显示不全的问题。
+ * LinkAndroid 已安装程序 UI 补丁：把下面三份资源注入 dist/index.html
+ *
+ *   <style  id="la-ui-patch">      task-editor-dialog.css  新建任务弹窗高度修正
+ *   <style  id="la-a11y-tree">     a11y-tree.css           无障碍树可读性
+ *   <script id="la-a11y-tree-js">  a11y-tree.js            无障碍树交互增强
  *
  *   node scripts/ui-patch/apply.cjs                 # 默认 %LOCALAPPDATA%\Programs\LinkAndroid
  *   node scripts/ui-patch/apply.cjs --target "D:\Apps\LinkAndroid"
  *   node scripts/ui-patch/apply.cjs --dry-run
- *   node scripts/ui-patch/apply.cjs --revert        # 仅移除本补丁的 <style>，不影响其他补丁
+ *   node scripts/ui-patch/apply.cjs --revert        # 移除本工具注入的全部片段
  *
  * 运行前请退出 LinkAndroid。asar 只改动 dist/index.html 一个条目。
  */
@@ -34,7 +36,6 @@ const target = path.resolve(
 const resources = path.join(target, 'resources')
 const asarPath = path.join(resources, 'app.asar')
 const backupPath = path.join(resources, 'app.asar.orig')
-const STYLE_ID = 'la-ui-patch'
 
 const fail = (msg) => {
     console.error('[ui-patch] ' + msg)
@@ -97,30 +98,43 @@ const readEntry = (entry) => {
 }
 
 let html = readEntry(htmlEntry).toString('utf8')
-const styleRe = new RegExp(`\\s*<style id="${STYLE_ID}">[\\s\\S]*?</style>`, 'g')
-html = html.replace(styleRe, '')
 
-let changed = false
-if (revert) {
-    console.log('[ui-patch] 移除 <style id="' + STYLE_ID + '">')
-} else {
-    const cssPath = path.join(HERE, 'task-editor-dialog.css')
-    if (!fs.existsSync(cssPath)) fail('找不到 ' + cssPath)
-    const css = fs.readFileSync(cssPath, 'utf8')
-    if (css.includes('</style')) fail('CSS 不能包含 </style>')
-    const tag = `<style id="${STYLE_ID}">\n${css}\n</style>`
-    if (/<\/head>/i.test(html)) html = html.replace(/<\/head>/i, tag + '\n</head>')
-    else html = tag + '\n' + html
-    console.log('[ui-patch] 注入 <style id="' + STYLE_ID + '"> (' + css.length + ' bytes)')
+// 先移除本工具注入过的所有片段（可重复执行）
+const ASSETS = [
+    {kind: 'style', id: 'la-ui-patch', file: 'task-editor-dialog.css'},
+    {kind: 'style', id: 'la-a11y-tree', file: 'a11y-tree.css'},
+    {kind: 'script', id: 'la-a11y-tree-js', file: 'a11y-tree.js'},
+    {kind: 'script', id: 'la-resize-panes-js', file: 'resize-panes.js'},
+]
+for (const asset of ASSETS) {
+    const re = new RegExp(`\\s*<${asset.kind} id="${asset.id}">[\\s\\S]*?</${asset.kind}>`, 'g')
+    html = html.replace(re, '')
 }
-changed = true
+
+if (revert) {
+    console.log('[ui-patch] 已移除全部注入片段')
+} else {
+    for (const asset of ASSETS) {
+        const file = path.join(HERE, asset.file)
+        if (!fs.existsSync(file)) fail('找不到 ' + file)
+        const source = fs.readFileSync(file, 'utf8')
+        if (source.includes('</' + asset.kind)) fail(asset.file + ' 不能包含 </' + asset.kind)
+        const tag = `<${asset.kind} id="${asset.id}">\n${source}\n</${asset.kind}>`
+        if (asset.kind === 'style') {
+            html = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, tag + '\n</head>') : tag + '\n' + html
+        } else {
+            html = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, tag + '\n</body>') : html + '\n' + tag
+        }
+        console.log(`[ui-patch] 注入 <${asset.kind} id="${asset.id}"> (${source.length} bytes)`)
+    }
+}
 
 if (dryRun) {
     fs.closeSync(fd)
     console.log('[dry-run] 未写入 app.asar')
     process.exit(0)
 }
-if (changed && !fs.existsSync(backupPath)) {
+if (!fs.existsSync(backupPath)) {
     fs.copyFileSync(asarPath, backupPath)
     console.log('[ui-patch] 已备份原 asar: ' + backupPath)
 }
